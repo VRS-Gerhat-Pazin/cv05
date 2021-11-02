@@ -23,6 +23,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "assignment.h"
 
 /* USER CODE END Includes */
 
@@ -43,7 +44,7 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-
+volatile uint8_t switch_state;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -54,7 +55,29 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+void EXTI4_IRQHandler(void)
+{
+  /* USER CODE BEGIN EXTI4_IRQn 0 */
 
+  /* USER CODE END EXTI4_IRQn 0 */
+  if (LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_4) != RESET)
+  {
+    LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_4);
+    /* USER CODE BEGIN LL_EXTI_LINE_4 */
+    if(checkButtonState(GPIO_PORT_BUTTON,
+    						GPIO_PIN_BUTTON,
+    						BUTTON_EXTI_TRIGGER,
+    						BUTTON_EXTI_SAMPLES_WINDOW,
+    						BUTTON_EXTI_SAMPLES_REQUIRED))
+    	{
+    		switch_state ^= 1;
+    	}
+    /* USER CODE END LL_EXTI_LINE_4 */
+  }
+  /* USER CODE BEGIN EXTI4_IRQn 1 */
+
+  /* USER CODE END EXTI4_IRQn 1 */
+}
 /* USER CODE END 0 */
 
 /**
@@ -101,6 +124,14 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	  if(switch_state)
+	  {
+		  LL_GPIO_SetOutputPin(GPIOA, LL_GPIO_PIN_4);
+	  }
+	  else
+	  {
+		  LL_GPIO_ResetOutputPin(GPIOA, LL_GPIO_PIN_4);
+	  }
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -141,7 +172,34 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
+uint8_t checkButtonState(GPIO_TypeDef* PORT, uint8_t PIN, uint8_t edge, uint8_t samples_window, uint8_t samples_required)
+{
+	uint8_t button_state = 0, timeout = 0;
 
+	while(button_state < samples_required && timeout < samples_window)
+	{
+		if(LL_GPIO_IsInputPinSet(PORT, PIN) == edge)/*LL_GPIO_IsInputPinSet(PORT, PIN)*/
+		{
+			button_state += 1;
+		}
+		else
+		{
+			button_state = 0;
+		}
+
+		timeout += 1;
+		LL_mDelay(1);
+	}
+
+	if((button_state >= samples_required) && (timeout <= samples_window))
+	{
+		return 1;
+	}
+	else
+	{
+		return 0;
+	}
+}
 /* USER CODE END 4 */
 
 /**
